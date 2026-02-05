@@ -1,0 +1,13 @@
+# Environments
+venv/
+.env
+__pycache__/
+*.pyc
+
+# Jupyter Notebooks
+.ipynb_checkpoints/
+
+# Data & IDE
+data/BrentOilPrices.csv
+.vscode/
+.idea/
