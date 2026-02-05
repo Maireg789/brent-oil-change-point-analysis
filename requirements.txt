@@ -6,3 +6,4 @@ statsmodels
 pymc
 arviz
 jupyter
+openpyxl
