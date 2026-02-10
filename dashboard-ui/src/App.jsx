@@ -2,73 +2,82 @@ import React, { useEffect, useState } from 'react';
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, ReferenceLine } from 'recharts';
 import axios from 'axios';
 
+const API_BASE = "http://127.0.0.1:5000/api";
+
 function App() {
-  const [prices, setPrices] = useState([]);
+  const [allPrices, setAllPrices] = useState([]);
+  const [displayPrices, setDisplayPrices] = useState([]);
   const [events, setEvents] = useState([]);
-  const [changePoint, setChangePoint] = useState(null);
+  const [analysis, setAnalysis] = useState(null);
+  const [filter, setFilter] = useState('All'); // 'All', '1Y', '5Y'
 
   useEffect(() => {
-    // 1. Fetch Prices
-    axios.get('http://127.0.0.1:5000/api/prices')
-      .then(res => setPrices(res.data.slice(-800)))
-      .catch(err => console.error("Flask Prices API error:", err));
-
-    // 2. Fetch Events
-    axios.get('http://127.0.0.1:5000/api/events')
-      .then(res => setEvents(res.data))
-      .catch(err => console.error("Flask Events API error:", err));
-
-    // 3. Fetch Change Point
-    axios.get('http://127.0.0.1:5000/api/analysis-results')
-      .then(res => setChangePoint(res.data.change_point_date))
-      .catch(err => console.error("Flask Analysis API error:", err));
+    axios.get(`${API_BASE}/prices`).then(res => {
+      setAllPrices(res.data);
+      setDisplayPrices(res.data.slice(-500)); // Default view
+    });
+    axios.get(`${API_BASE}/events`).then(res => setEvents(res.data));
+    axios.get(`${API_BASE}/analysis-results`).then(res => setAnalysis(res.data));
   }, []);
 
+  // Filter Logic: Addresses "Date Filters" feedback
+  const handleFilter = (period) => {
+    setFilter(period);
+    if (period === '1Y') setDisplayPrices(allPrices.slice(-250));
+    else if (period === '5Y') setDisplayPrices(allPrices.slice(-1250));
+    else setDisplayPrices(allPrices.slice(-500));
+  };
+
   return (
-    <div style={{ padding: '30px', fontFamily: 'Arial, sans-serif', backgroundColor: '#f0f2f5', minHeight: '100vh' }}>
-      <header style={{ marginBottom: '20px' }}>
-        <h1 style={{ color: '#1a365d', margin: 0 }}>Birhan Energies: Brent Oil Dashboard</h1>
-        <p style={{ color: '#4a5568' }}>Real-time Analysis & Change Point Detection</p>
-      </header>
-      
-      <div style={{ display: 'grid', gridTemplateColumns: '3fr 1fr', gap: '20px' }}>
-        {/* Chart Section */}
-        <div style={{ background: 'white', padding: '20px', borderRadius: '12px', boxShadow: '0 4px 6px rgba(0,0,0,0.1)' }}>
-          <h3 style={{ marginTop: 0 }}>Price Trend & Model Detection</h3>
-          <div style={{ width: '100%', height: 450 }}>
-            <ResponsiveContainer>
-              <LineChart data={prices}>
-                <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#e2e8f0" />
-                <XAxis dataKey="Date" tick={{fontSize: 10}} minTickGap={100} />
-                <YAxis domain={['auto', 'auto']} />
-                <Tooltip />
-                <Line type="monotone" dataKey="Price" stroke="#3182ce" strokeWidth={2} dot={false} />
-                {changePoint && (
-                  <ReferenceLine x={changePoint} stroke="red" strokeWidth={2} label={{ value: 'Change Point', position: 'top', fill: 'red', fontSize: 12 }} />
-                )}
-              </LineChart>
-            </ResponsiveContainer>
-          </div>
+    <div style={{ padding: '20px', backgroundColor: '#f4f7f9', minHeight: '100vh', fontFamily: 'Inter, sans-serif' }}>
+      <div style={{ maxWidth: '1200px', margin: '0 auto' }}>
+        <h1 style={{ color: '#1a365d', borderBottom: '2px solid #3182ce', paddingBottom: '10px' }}>Birhan Energies | Oil Market Intelligence</h1>
+
+        {/* Filter Controls */}
+        <div style={{ margin: '20px 0', display: 'flex', gap: '10px' }}>
+          {['1Y', '5Y', 'All'].map(p => (
+            <button key={p} onClick={() => handleFilter(p)} 
+              style={{ padding: '8px 20px', borderRadius: '5px', border: 'none', cursor: 'pointer',
+              backgroundColor: filter === p ? '#3182ce' : '#cbd5e0', color: 'white' }}>{p}</button>
+          ))}
         </div>
 
-        {/* Sidebar Section */}
-        <div style={{ background: 'white', padding: '20px', borderRadius: '12px', boxShadow: '0 4px 6px rgba(0,0,0,0.1)' }}>
-          <h3 style={{ marginTop: 0 }}>Key Geopolitical Events</h3>
-          <div style={{ height: '450px', overflowY: 'auto', textAlign: 'left', paddingRight: '10px' }}>
-            {events.length > 0 ? (
-              events.map((e, i) => (
-                <div key={i} style={{ borderBottom: '1px solid #edf2f7', padding: '12px 0' }}>
-                  <div style={{ color: '#e53e3e', fontWeight: 'bold', fontSize: '11px', marginBottom: '4px' }}>
-                    {e.Date || e.date}
-                  </div>
-                  <div style={{ fontSize: '13px', color: '#2d3748', lineHeight: '1.4' }}>
-                    {e.Event || e.event || e.description || "Historical Event"}
-                  </div>
-                </div>
-              ))
-            ) : (
-              <p style={{ color: '#a0aec0', fontSize: '14px' }}>Loading event data...</p>
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(300px, 1fr))', gap: '20px' }}>
+          {/* Main Chart Section */}
+          <div style={{ background: 'white', padding: '20px', borderRadius: '12px', boxShadow: '0 4px 6px rgba(0,0,0,0.1)' }}>
+            <h3>Historical Price Trend & Event Overlays</h3>
+            <div style={{ width: '100%', height: 400 }}>
+              <ResponsiveContainer>
+                <LineChart data={displayPrices}>
+                  <CartesianGrid strokeDasharray="3 3" vertical={false} />
+                  <XAxis dataKey="Date" tick={{fontSize: 10}} minTickGap={100} />
+                  <YAxis />
+                  <Tooltip />
+                  <Line type="monotone" dataKey="Price" stroke="#3182ce" dot={false} strokeWidth={2} />
+                  {analysis && <ReferenceLine x={analysis.change_point_date} stroke="red" label="Model Break" />}
+                </LineChart>
+              </ResponsiveContainer>
+            </div>
+          </div>
+
+          {/* Key Insights Sidebar */}
+          <div style={{ background: 'white', padding: '20px', borderRadius: '12px', boxShadow: '0 4px 6px rgba(0,0,0,0.1)' }}>
+            <h3>Quantified Analysis</h3>
+            {analysis?.metrics && (
+              <div style={{ background: '#ebf8ff', padding: '15px', borderRadius: '8px', marginBottom: '20px' }}>
+                <p><strong>Detected Change:</strong> {analysis.change_point_date}</p>
+                <p><strong>Impact:</strong> {analysis.metrics.drop} Price Drop</p>
+                <p style={{fontSize: '12px', color: '#4a5568'}}>{analysis.description}</p>
+              </div>
             )}
+            <h3>Event Timeline</h3>
+            <div style={{ maxHeight: '250px', overflowY: 'auto', fontSize: '13px' }}>
+              {events.map((e, i) => (
+                <div key={i} style={{ padding: '8px 0', borderBottom: '1px solid #edf2f7' }}>
+                  <span style={{ color: '#e53e3e', fontWeight: 'bold' }}>{e.Date}</span>: {e.Event}
+                </div>
+              ))}
+            </div>
           </div>
         </div>
       </div>
